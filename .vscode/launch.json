@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "ShoppingCart",
+            "request": "launch",
+            "mainClass": "ShoppingCart",
+            "cwd": "${workspaceFolder}/Lab1/lab1_start/lab1_start"
+        }
+    ]
+}

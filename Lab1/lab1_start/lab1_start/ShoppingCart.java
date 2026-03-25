@@ -24,14 +24,12 @@ public class ShoppingCart {
         while(!product.equals("quit")) {
             try {
                 Integer price = Store.getProductPrice(product);
-                if(wallet.getBalance() < price){
-                    System.out.println("Balance not sufficient to buy product: " + product);
-                    break;
-
-                } else {
-                    wallet.setBalance(wallet.getBalance() - price);
+                if(wallet.safeWithdraw(price)){
                     pocket.addProduct(product);
                     System.out.println("You bought " + product + " for " + price + " credits.");
+                } else {
+                    System.out.println("Balance not sufficient to buy product: " + product);
+                    break;
                 }
             } catch (IllegalArgumentException e) {
                 System.out.println("Product " + product + " is not in store");
