@@ -25,7 +25,7 @@ public class ShoppingCart {
             try {
                 Integer price = Store.getProductPrice(product);
                 if(wallet.safeWithdraw(price)){
-                    pocket.addProduct(product);
+                    pocket.safeAddProduct(product);
                     System.out.println("You bought " + product + " for " + price + " credits.");
                 } else {
                     System.out.println("Balance not sufficient to buy product: " + product);

@@ -1,9 +1,8 @@
 package backEnd;
 import java.io.File;
-import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.io.FileReader;
-import java.io.BufferedReader;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 
 
 public class Pocket {
@@ -11,7 +10,7 @@ public class Pocket {
      * The RandomAccessFile of the pocket file
      */
     private RandomAccessFile file;
-
+    
     /**
      * Creates a Pocket object
      * 
@@ -29,6 +28,17 @@ public class Pocket {
     public void addProduct(String product) throws Exception {
         this.file.seek(this.file.length());
         this.file.writeBytes(product+'\n'); 
+    }
+
+    public void safeAddProduct(String product) throws Exception {
+        // Create a file lock to limit access to the pocket file to one instance at a time.
+        FileChannel channel = this.file.getChannel();
+        try (FileLock lock = channel.lock();) {
+            this.file.seek(this.file.length());
+            this.file.writeBytes(product+'\n');
+        } catch (Exception e) {
+            System.out.println(e.getStackTrace());
+        } 
     }
 
     /**
