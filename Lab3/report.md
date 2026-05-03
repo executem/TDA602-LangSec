@@ -20,3 +20,23 @@ Secondly, HTTPonly cookies would render the exploit impossible assuming that the
 Thridly, using an iframe for the comments div (`.secondary-navigation`) with the attribute `sandbox=allow-forms` would sandbox the comments. The sandbox attribute is deny by default, so only allowing forms would make scripts unable to run, as `allow-scripts` is a different permission that needs to be given to the iframe.
 
 Fourthly, isolating user created content under a different origin where a seperate session key is used, or none at all. Such as having `blog.com` as a main site and `blogcontent.com` as the separate origin containing user content. In case a user uploads malicious code that steals session keys it would only get the session key for the user content part of the website (if any), not the part with the admin control.
+
+## Part 2 - SQL injection
+The vulnerability we found was on the functionality of editing posts. We found it by trying different URLs that have obvious database connectivity, like deleting posts, getting posts, posting comments. We tried by testing whether the end of the URL parses arithmetics on the id. Using `UNION` we can perform arbitrary SQL commands. Like for showing /etc/passwd: `http://localhost:8080/admin/edit.php?id=0%20UNION%20SELECT%201,2,load_file(%22/etc/passwd%22),4`.
+
+The vulnerability stems from the lack of input sanitazation, the input should have been parameterized. Meaning that the SQL library in the web server's code constructs an SQL query with placeholder values for the input provided by the user. Instead of just placing raw text as a PHP string in the sql query.. 
+
+```php
+
+  function find($id) {
+    $result = mysql_query("SELECT * FROM posts where id=".$id);
+    $row = mysql_fetch_assoc($result); 
+    if (isset($row)){
+      $post = new Post($row['id'],$row['title'],$row['text'],$row['published']);
+    }
+    return $
+```
+
+
+
+?id=0%20union%20select%201,2,load_file("/var/www/classes: http://vulnerable/admin/edit.php?id=1%20union%20select%201,2,3,4%20into%20outfile%20%22/var/www/classes/s.php%22."),4
